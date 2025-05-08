@@ -4,6 +4,8 @@ import pandas as pd
 import mysql.connector
 from dotenv import load_dotenv
 import os
+from flask import request
+
 
 # Carregar variáveis do arquivo .env
 load_dotenv()
@@ -24,16 +26,14 @@ conn = mysql.connector.connect(
 cursor = conn.cursor()
 
 
+def get_user_ip():
+    ip = request.remote_addr  # Captura o IP real do visitante
+    return ip
 
-def get_ip_info():
-    response = requests.get("https://api64.ipify.org?format=json")
-    ip = response.json()["ip"]
-    
+def get_ip_info(ip):
     response = requests.get(f"https://ipinfo.io/{ip}/json")
     location_data = response.json()
-
-    return ip, location_data
-
+    return location_data
 
 def insert_into_db(ip, location_data):
     sql = """
@@ -41,14 +41,14 @@ def insert_into_db(ip, location_data):
     VALUES (%s, %s, %s, %s)
     """
     valores = (ip, location_data.get("city"), location_data.get("region"), location_data.get("country"))
-
     cursor.execute(sql, valores)
     conn.commit()
 
-
 # Coleta os dados
-ip, location_data = get_ip_info()
-insert_into_db(ip, location_data)
+ip = get_user_ip()  # Obtém o IP do visitante
+location_data = get_ip_info(ip)  # Busca os detalhes do IP
+insert_into_db(ip, location_data)  # Salva no banco
+
 st.success("O comprovante foi enviado no seu e-mail")
 
 # Fechar conexão quando o app terminar
